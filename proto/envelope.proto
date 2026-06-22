@@ -3,6 +3,7 @@ import "common.proto";
 
 package nexa_protocol;
 option go_package = "github.com/leehaohaohao/nexa-protocol/go/messages";
+option java_package = "com.nexa.protocol";
 message Envelope {
 
   uint32 version = 1;
