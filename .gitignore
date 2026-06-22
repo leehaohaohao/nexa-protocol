@@ -1,0 +1,58 @@
+# ---- IDE ----
+.idea/
+*.iml
+.vscode/
+*.swp
+*.swo
+*~
+
+# ---- Go ----
+go/bin/
+go/pkg/
+go/src/**/*.exe
+go/src/**/*.test
+go/src/**/*.out
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+vendor/
+
+# ---- Java ----
+java/**/target/
+java/**/build/
+java/**/.gradle/
+*.class
+*.jar
+*.war
+*.ear
+*.nar
+hs_err_pid*
+replay_pid*
+
+# ---- Maven ----
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
+
+# ---- Gradle ----
+.gradle/
+build/
+gradle-app.setting
+!gradle-wrapper.jar
+
+# ---- OS ----
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---- Logs ----
+*.log
+
+# ---- Env / Secrets ----
+.env
+.env.*
+*.pem
+*.key
