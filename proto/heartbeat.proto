@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package nexa_protocol;
+option go_package = "github.com/leehaohaohao/nexa-protocol/go/messages";
+message HeartbeatRequest {
+
+  string runner_id = 1;
+
+  int32 running_tasks = 2;
+
+  double cpu_usage = 3;
+
+  double memory_usage = 4;
+}
+
+message HeartbeatResponse {
+
+  bool success = 1;
+}

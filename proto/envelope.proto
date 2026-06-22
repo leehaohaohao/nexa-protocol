@@ -1,0 +1,21 @@
+syntax = "proto3";
+import "common.proto";
+
+package nexa_protocol;
+option go_package = "github.com/leehaohaohao/nexa-protocol/go/messages";
+message Envelope {
+
+  uint32 version = 1;
+
+  MessageType type = 2;
+
+  string request_id = 3;
+
+  string source_id = 4;
+
+  string target_id = 5;
+
+  int64 timestamp = 6;
+
+  bytes payload = 7;
+}

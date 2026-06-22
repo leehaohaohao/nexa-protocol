@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package nexa_protocol;
+option go_package = "github.com/leehaohaohao/nexa-protocol/go/messages";
+message RegisterRequest {
+
+  string runner_id = 1;
+
+  string hostname = 2;
+
+  string ip = 3;
+
+  string version = 4;
+}
+
+message RegisterResponse {
+
+  bool success = 1;
+
+  string message = 2;
+}

@@ -1,0 +1,9 @@
+syntax = "proto3";
+package nexa_protocol;
+option go_package = "github.com/leehaohaohao/nexa-protocol/go/messages";
+message DisconnectRequest {
+
+  string runner_id = 1;
+
+  string reason = 2;
+}

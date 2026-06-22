@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package nexa_protocol;
+option go_package = "github.com/leehaohaohao/nexa-protocol/go/messages";
+enum MessageType {
+
+  UNKNOWN = 0;
+
+  REGISTER_REQ = 1;
+  REGISTER_RESP = 2;
+
+  HEARTBEAT_REQ = 3;
+  HEARTBEAT_RESP = 4;
+
+  DISCONNECT_REQ = 5;
+
+}
