@@ -10,7 +10,6 @@ import (
 
 	"github.com/leehaohaohao/nexa-protocol/go/codec"
 	"github.com/leehaohaohao/nexa-protocol/go/messages"
-	"google.golang.org/protobuf/proto"
 )
 
 const (
@@ -55,6 +54,7 @@ type NexaMaster struct {
 	listener          Listener
 	sessions          *SessionManager
 	heartbeat         *HeartbeatMonitor
+	dispatcher        *MessageDispatcher
 	logger            *slog.Logger
 	heartbeatTimeout  time.Duration
 	heartbeatInterval time.Duration
@@ -86,6 +86,14 @@ func New(listener Listener, opts ...Option) *NexaMaster {
 	}
 
 	m.heartbeat = NewHeartbeatMonitor(m.sessions, listener, m.heartbeatTimeout, m.heartbeatInterval, m.logger)
+
+	handlers := []Handler{
+		NewRegisterHandler(m.sessions, listener, m.logger),
+		NewHeartbeatHandler(m.sessions, listener, m.logger),
+		NewDisconnectHandler(m.sessions, listener, m.logger),
+	}
+	m.dispatcher = NewMessageDispatcher(handlers, m.logger)
+
 	return m
 }
 
@@ -134,13 +142,15 @@ func (m *NexaMaster) acceptLoop() {
 func (m *NexaMaster) handleConn(conn net.Conn) {
 	defer conn.Close()
 
-	var currentSession *RunnerSession
+	connCtx := &ConnContext{
+		Session: NewRunnerSession("", conn, "", "", ""),
+	}
 
 	defer func() {
-		if currentSession != nil {
-			m.sessions.RemoveIfPresent(currentSession.RunnerId, currentSession)
-			if !currentSession.timedOut.Load() {
-				m.listener.OnDisconnect(currentSession.RunnerId, "connection_lost")
+		if connCtx.Session != nil && connCtx.Session.RunnerId != "" {
+			m.sessions.RemoveIfPresent(connCtx.Session.RunnerId, connCtx.Session)
+			if !connCtx.Session.timedOut.Load() {
+				m.listener.OnDisconnect(connCtx.Session.RunnerId, "connection_lost")
 			}
 		}
 	}()
@@ -157,103 +167,8 @@ func (m *NexaMaster) handleConn(conn net.Conn) {
 			return
 		}
 
-		switch env.GetType() {
-		case messages.MessageType_REGISTER_REQ:
-			session := m.handleRegister(conn, env)
-			if session == nil {
-				return
-			}
-			currentSession = session
-
-		case messages.MessageType_HEARTBEAT_REQ:
-			if !m.handleHeartbeat(currentSession, env) {
-				return
-			}
-
-		case messages.MessageType_DISCONNECT_REQ:
-			m.handleDisconnect(currentSession, env)
-			currentSession = nil
-			return
-
-		default:
-			m.logger.Warn("unknown message type", "type", env.GetType())
-		}
+		m.dispatcher.Dispatch(connCtx, env)
 	}
-}
-
-func (m *NexaMaster) handleRegister(conn net.Conn, env *messages.Envelope) *RunnerSession {
-	req := &messages.RegisterRequest{}
-	if err := codec.UnmarshalMessage(env.GetPayload(), req); err != nil {
-		m.logger.Error("unmarshal register request error", "error", err)
-		return nil
-	}
-
-	session := NewRunnerSession(req.GetRunnerId(), conn, req.GetHostname(), req.GetIp(), req.GetVersion())
-
-	old := m.sessions.Register(session)
-	if old != nil {
-		old.Close()
-	}
-
-	resp := m.listener.OnRegister(session, req)
-
-	respEnv := codec.BuildRegisterResponse(req.GetRunnerId(), resp.GetSuccess(), resp.GetMessage())
-	if !session.Send(respEnv) {
-		m.sessions.RemoveIfPresent(session.RunnerId, session)
-		return nil
-	}
-
-	m.logger.Info("runner registered",
-		"runner_id", req.GetRunnerId(),
-		"hostname", req.GetHostname(),
-		"ip", req.GetIp(),
-	)
-
-	return session
-}
-
-func (m *NexaMaster) handleHeartbeat(session *RunnerSession, env *messages.Envelope) bool {
-	if session == nil {
-		return false
-	}
-
-	req := &messages.HeartbeatRequest{}
-	if err := codec.UnmarshalMessage(env.GetPayload(), req); err != nil {
-		m.logger.Error("unmarshal heartbeat request error", "error", err)
-		return false
-	}
-
-	session.UpdateHeartbeat()
-
-	respEnv := codec.BuildHeartbeatResponse(session.RunnerId)
-	if !session.Send(respEnv) {
-		return false
-	}
-
-	m.listener.OnHeartbeat(session, req)
-	return true
-}
-
-func (m *NexaMaster) handleDisconnect(session *RunnerSession, env *messages.Envelope) {
-	if session == nil {
-		return
-	}
-
-	req := &messages.DisconnectRequest{}
-	if err := proto.Unmarshal(env.GetPayload(), req); err != nil {
-		m.logger.Error("unmarshal disconnect request error", "error", err)
-	}
-
-	m.sessions.Remove(session.RunnerId)
-	session.Close()
-
-	reason := req.GetReason()
-	if reason == "" {
-		reason = "client_disconnect"
-	}
-
-	m.logger.Info("runner disconnected", "runner_id", session.RunnerId, "reason", reason)
-	m.listener.OnDisconnect(session.RunnerId, reason)
 }
 
 // Shutdown 优雅关闭主节点
