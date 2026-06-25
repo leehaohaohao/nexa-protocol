@@ -77,3 +77,22 @@ func BuildDisconnectRequest(runnerId, reason string) *messages.Envelope {
 	payload, _ := proto.Marshal(req)
 	return BuildEnvelope(messages.MessageType_DISCONNECT_REQ, payload, runnerId, "")
 }
+
+// BuildRegisterResponse 构建注册响应
+func BuildRegisterResponse(targetId string, success bool, message string) *messages.Envelope {
+	resp := &messages.RegisterResponse{
+		Success: success,
+		Message: message,
+	}
+	payload, _ := proto.Marshal(resp)
+	return BuildEnvelope(messages.MessageType_REGISTER_RESP, payload, "master", targetId)
+}
+
+// BuildHeartbeatResponse 构建心跳响应
+func BuildHeartbeatResponse(targetId string) *messages.Envelope {
+	resp := &messages.HeartbeatResponse{
+		Success: true,
+	}
+	payload, _ := proto.Marshal(resp)
+	return BuildEnvelope(messages.MessageType_HEARTBEAT_RESP, payload, "master", targetId)
+}
