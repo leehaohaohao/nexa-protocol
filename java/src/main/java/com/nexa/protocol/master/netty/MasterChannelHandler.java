@@ -1,17 +1,11 @@
 package com.nexa.protocol.master.netty;
 
-import com.nexa.protocol.Common.MessageType;
-import com.nexa.protocol.Disconnect.DisconnectRequest;
 import com.nexa.protocol.EnvelopeOuterClass.Envelope;
-import com.nexa.protocol.Heartbeat.HeartbeatRequest;
-import com.nexa.protocol.Heartbeat.HeartbeatResponse;
 import com.nexa.protocol.codec.ProtocolCodec;
-import com.nexa.protocol.Register.RegisterRequest;
-import com.nexa.protocol.Register.RegisterResponse;
 import com.nexa.protocol.master.NexaMasterListener;
 import com.nexa.protocol.master.RunnerSession;
 import com.nexa.protocol.master.SessionManager;
-import io.netty.channel.ChannelHandler;
+import com.nexa.protocol.master.netty.handler.MessageDispatcher;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.util.AttributeKey;
@@ -25,10 +19,13 @@ public class MasterChannelHandler extends SimpleChannelInboundHandler<byte[]> {
 
     private final SessionManager sessionManager;
     private final NexaMasterListener listener;
+    private final MessageDispatcher dispatcher;
 
-    public MasterChannelHandler(SessionManager sessionManager, NexaMasterListener listener) {
+    public MasterChannelHandler(SessionManager sessionManager, NexaMasterListener listener,
+                                MessageDispatcher dispatcher) {
         this.sessionManager = sessionManager;
         this.listener = listener;
+        this.dispatcher = dispatcher;
     }
 
     @Override
@@ -41,94 +38,7 @@ public class MasterChannelHandler extends SimpleChannelInboundHandler<byte[]> {
             return;
         }
 
-        MessageType type = envelope.getType();
-        switch (type) {
-            case REGISTER_REQ -> handleRegister(ctx, envelope);
-            case HEARTBEAT_REQ -> handleHeartbeat(ctx, envelope);
-            case DISCONNECT_REQ -> handleDisconnect(ctx, envelope);
-            default -> log.warn("unknown message type: {}", type);
-        }
-    }
-
-    private void handleRegister(ChannelHandlerContext ctx, Envelope envelope) {
-        RegisterRequest req;
-        try {
-            req = ProtocolCodec.parseRegisterRequest(envelope.getPayload().toByteArray());
-        } catch (Exception e) {
-            log.error("failed to parse RegisterRequest", e);
-            return;
-        }
-
-        String runnerId = req.getRunnerId();
-        RunnerSession session = new RunnerSession(
-                runnerId, ctx.channel(), req.getHostname(), req.getIp(), req.getVersion());
-
-        RunnerSession oldSession = sessionManager.register(session);
-        if (oldSession != null) {
-            log.info("runner {} reconnected, closing old session", runnerId);
-            oldSession.close();
-        }
-
-        ctx.channel().attr(RUNNER_ID_ATTR).set(runnerId);
-
-        RegisterResponse resp;
-        try {
-            resp = listener.onRegister(session, req);
-        } catch (Exception e) {
-            log.error("listener.onRegister error for {}", runnerId, e);
-            resp = RegisterResponse.newBuilder()
-                    .setSuccess(false)
-                    .setMessage("internal error: " + e.getMessage())
-                    .build();
-        }
-
-        Envelope respEnv = ProtocolCodec.buildRegisterResponse(runnerId, resp.getSuccess(), resp.getMessage());
-        ctx.writeAndFlush(respEnv.toByteArray());
-    }
-
-    private void handleHeartbeat(ChannelHandlerContext ctx, Envelope envelope) {
-        HeartbeatRequest req;
-        try {
-            req = ProtocolCodec.parseHeartbeatRequest(envelope.getPayload().toByteArray());
-        } catch (Exception e) {
-            log.error("failed to parse HeartbeatRequest", e);
-            return;
-        }
-
-        sessionManager.get(req.getRunnerId()).ifPresent(session -> {
-            session.updateHeartbeatTime();
-
-            Envelope respEnv = ProtocolCodec.buildHeartbeatResponse(req.getRunnerId());
-            session.send(respEnv);
-
-            try {
-                listener.onHeartbeat(session, req);
-            } catch (Exception e) {
-                log.warn("listener.onHeartbeat error for {}", req.getRunnerId(), e);
-            }
-        });
-    }
-
-    private void handleDisconnect(ChannelHandlerContext ctx, Envelope envelope) {
-        DisconnectRequest req;
-        try {
-            req = ProtocolCodec.parseDisconnectRequest(envelope.getPayload().toByteArray());
-        } catch (Exception e) {
-            log.error("failed to parse DisconnectRequest", e);
-            return;
-        }
-
-        String runnerId = req.getRunnerId();
-        sessionManager.remove(runnerId);
-        ctx.channel().attr(RUNNER_ID_ATTR).set(null);
-
-        try {
-            listener.onDisconnect(runnerId, req.getReason());
-        } catch (Exception e) {
-            log.error("listener.onDisconnect error for {}", runnerId, e);
-        }
-
-        ctx.close();
+        dispatcher.dispatch(ctx, envelope);
     }
 
     @Override
@@ -138,16 +48,13 @@ public class MasterChannelHandler extends SimpleChannelInboundHandler<byte[]> {
             return;
         }
 
-        // 只有当 session 的 channel 仍是当前 channel 时才处理（避免重连场景误删新 session）
         sessionManager.get(runnerId).ifPresent(session -> {
             if (session.getChannel() != ctx.channel()) {
                 return;
             }
 
-            // 使用 removeIfPresent 保证原子性：只有 session 未被其他线程移除时才移除
             sessionManager.removeIfPresent(runnerId, session);
 
-            // 如果是心跳超时触发的关闭，HeartbeatMonitor 已经通知过 listener，这里跳过
             if (session.isTimedOut()) {
                 return;
             }

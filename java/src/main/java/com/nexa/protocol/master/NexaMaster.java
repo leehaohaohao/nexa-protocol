@@ -4,6 +4,7 @@ import com.nexa.protocol.EnvelopeOuterClass.Envelope;
 import com.nexa.protocol.master.netty.MasterChannelHandler;
 import com.nexa.protocol.master.netty.NexaFrameDecoder;
 import com.nexa.protocol.master.netty.NexaFrameEncoder;
+import com.nexa.protocol.master.netty.handler.*;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
@@ -13,6 +14,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
+import java.util.List;
 
 public class NexaMaster {
 
@@ -45,7 +47,14 @@ public class NexaMaster {
         bossGroup = new NioEventLoopGroup(1);
         workerGroup = new NioEventLoopGroup();
 
-        MasterChannelHandler handler = new MasterChannelHandler(sessionManager, listener);
+        // 构建消息处理器链
+        List<MessageHandler> handlerList = List.of(
+                new RegisterHandler(sessionManager, listener),
+                new HeartbeatHandler(sessionManager, listener),
+                new DisconnectHandler(sessionManager, listener)
+        );
+        MessageDispatcher dispatcher = new MessageDispatcher(handlerList);
+        MasterChannelHandler handler = new MasterChannelHandler(sessionManager, listener, dispatcher);
 
         ServerBootstrap bootstrap = new ServerBootstrap();
         bootstrap.group(bossGroup, workerGroup)
