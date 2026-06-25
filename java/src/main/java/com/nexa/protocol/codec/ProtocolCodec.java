@@ -1,4 +1,4 @@
-package com.nexa.protocol;
+package com.nexa.protocol.codec;
 
 import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
@@ -35,7 +35,7 @@ public class ProtocolCodec {
         return buildEnvelope(type, payload, sourceId, "");
     }
 
-    // ---- Register ----
+    // ---- Register (Client) ----
 
     public static Envelope buildRegisterRequest(String runnerId, String hostname, String ip, String version) {
         RegisterRequest req = RegisterRequest.newBuilder()
@@ -51,7 +51,7 @@ public class ProtocolCodec {
         return RegisterResponse.parseFrom(payload);
     }
 
-    // ---- Heartbeat ----
+    // ---- Heartbeat (Client) ----
 
     public static Envelope buildHeartbeatRequest(String runnerId, int runningTasks, double cpuUsage, double memoryUsage) {
         HeartbeatRequest req = HeartbeatRequest.newBuilder()
@@ -67,7 +67,7 @@ public class ProtocolCodec {
         return HeartbeatResponse.parseFrom(payload);
     }
 
-    // ---- Disconnect ----
+    // ---- Disconnect (Client) ----
 
     public static Envelope buildDisconnectRequest(String runnerId, String reason) {
         DisconnectRequest req = DisconnectRequest.newBuilder()
@@ -75,6 +75,37 @@ public class ProtocolCodec {
                 .setReason(reason)
                 .build();
         return buildEnvelope(MessageType.DISCONNECT_REQ, req.toByteArray(), runnerId);
+    }
+
+    // ---- Register (Master) ----
+
+    public static Envelope buildRegisterResponse(String targetId, boolean success, String message) {
+        RegisterResponse resp = RegisterResponse.newBuilder()
+                .setSuccess(success)
+                .setMessage(message)
+                .build();
+        return buildEnvelope(MessageType.REGISTER_RESP, resp.toByteArray(), "master", targetId);
+    }
+
+    public static RegisterRequest parseRegisterRequest(byte[] payload) throws InvalidProtocolBufferException {
+        return RegisterRequest.parseFrom(payload);
+    }
+
+    // ---- Heartbeat (Master) ----
+
+    public static Envelope buildHeartbeatResponse(String targetId) {
+        HeartbeatResponse resp = HeartbeatResponse.newBuilder().setSuccess(true).build();
+        return buildEnvelope(MessageType.HEARTBEAT_RESP, resp.toByteArray(), "master", targetId);
+    }
+
+    public static HeartbeatRequest parseHeartbeatRequest(byte[] payload) throws InvalidProtocolBufferException {
+        return HeartbeatRequest.parseFrom(payload);
+    }
+
+    // ---- Disconnect (Master) ----
+
+    public static DisconnectRequest parseDisconnectRequest(byte[] payload) throws InvalidProtocolBufferException {
+        return DisconnectRequest.parseFrom(payload);
     }
 
     // ---- Envelope 解析 ----

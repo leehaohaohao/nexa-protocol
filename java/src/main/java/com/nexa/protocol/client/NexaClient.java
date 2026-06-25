@@ -1,8 +1,10 @@
-package com.nexa.protocol;
+package com.nexa.protocol.client;
 
 import com.nexa.protocol.Common.MessageType;
 import com.nexa.protocol.EnvelopeOuterClass.Envelope;
 import com.nexa.protocol.Register.RegisterResponse;
+import com.nexa.protocol.codec.FrameCodec;
+import com.nexa.protocol.codec.ProtocolCodec;
 
 import java.io.IOException;
 import java.io.InputStream;

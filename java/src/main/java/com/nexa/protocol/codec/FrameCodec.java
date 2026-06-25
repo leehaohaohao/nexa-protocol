@@ -1,4 +1,4 @@
-package com.nexa.protocol;
+package com.nexa.protocol.codec;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
