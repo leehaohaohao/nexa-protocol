@@ -138,15 +138,24 @@ public class MasterChannelHandler extends SimpleChannelInboundHandler<byte[]> {
             return;
         }
 
-        // only remove if the session's channel is still this channel (avoid race with reconnect)
+        // 只有当 session 的 channel 仍是当前 channel 时才处理（避免重连场景误删新 session）
         sessionManager.get(runnerId).ifPresent(session -> {
-            if (session.getChannel() == ctx.channel()) {
-                sessionManager.remove(runnerId);
-                try {
-                    listener.onDisconnect(runnerId, "connection_lost");
-                } catch (Exception e) {
-                    log.error("listener.onDisconnect error for {}", runnerId, e);
-                }
+            if (session.getChannel() != ctx.channel()) {
+                return;
+            }
+
+            // 使用 removeIfPresent 保证原子性：只有 session 未被其他线程移除时才移除
+            sessionManager.removeIfPresent(runnerId, session);
+
+            // 如果是心跳超时触发的关闭，HeartbeatMonitor 已经通知过 listener，这里跳过
+            if (session.isTimedOut()) {
+                return;
+            }
+
+            try {
+                listener.onDisconnect(runnerId, "connection_lost");
+            } catch (Exception e) {
+                log.error("listener.onDisconnect error for {}", runnerId, e);
             }
         });
     }
