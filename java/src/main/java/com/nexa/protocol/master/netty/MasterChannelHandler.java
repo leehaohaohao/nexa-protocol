@@ -6,12 +6,14 @@ import com.nexa.protocol.master.NexaMasterListener;
 import com.nexa.protocol.master.RunnerSession;
 import com.nexa.protocol.master.SessionManager;
 import com.nexa.protocol.master.netty.handler.MessageDispatcher;
+import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.util.AttributeKey;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+@ChannelHandler.Sharable
 public class MasterChannelHandler extends SimpleChannelInboundHandler<byte[]> {
 
     private static final Logger log = LoggerFactory.getLogger(MasterChannelHandler.class);
