@@ -45,6 +45,12 @@
 
 ## Java
 
+### v0.1.1 (2026-06-29)
+
+#### 修复
+
+- `MasterChannelHandler` 添加 `@Sharable` 注解，修复多连接共享 handler 导致 `ChannelPipelineException` 的问题
+
 ### v0.1.0 (2026-06-25)
 
 #### 初始版本
