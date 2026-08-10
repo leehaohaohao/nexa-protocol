@@ -14,6 +14,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 
 public class NexaMaster {
@@ -27,6 +28,7 @@ public class NexaMaster {
     private final Duration heartbeatCheckInterval;
     private final NexaMasterListener listener;
 
+    private final List<MessageHandler> handlers;
     private final SessionManager sessionManager;
     private HeartbeatMonitor heartbeatMonitor;
     private EventLoopGroup bossGroup;
@@ -41,19 +43,28 @@ public class NexaMaster {
         this.heartbeatCheckInterval = builder.heartbeatCheckInterval;
         this.listener = builder.listener;
         this.sessionManager = new SessionManager();
+
+        this.handlers = new ArrayList<>();
+        this.handlers.add(new RegisterHandler(sessionManager, listener));
+        this.handlers.add(new HeartbeatHandler(sessionManager, listener));
+        this.handlers.add(new DisconnectHandler(sessionManager, listener));
+        this.handlers.add(new TaskResultHandler(sessionManager, listener));
+        this.handlers.addAll(builder.handlers);
+    }
+
+    /**
+     * 注册自定义消息处理器，扩展协议消息类型
+     */
+    public void registerHandler(MessageHandler handler) {
+        handlers.add(handler);
     }
 
     public void start() throws InterruptedException {
         bossGroup = new NioEventLoopGroup(1);
         workerGroup = new NioEventLoopGroup();
 
-        // 构建消息处理器链
-        List<MessageHandler> handlerList = List.of(
-                new RegisterHandler(sessionManager, listener),
-                new HeartbeatHandler(sessionManager, listener),
-                new DisconnectHandler(sessionManager, listener)
-        );
-        MessageDispatcher dispatcher = new MessageDispatcher(handlerList);
+        // 构建消息处理器链（内置 handler + 自定义注册）
+        MessageDispatcher dispatcher = new MessageDispatcher(handlers);
         MasterChannelHandler handler = new MasterChannelHandler(sessionManager, listener, dispatcher);
 
         ServerBootstrap bootstrap = new ServerBootstrap();
@@ -128,6 +139,7 @@ public class NexaMaster {
 
     public static class Builder {
         private final NexaMasterListener listener;
+        private final List<MessageHandler> handlers = new ArrayList<>();
         private String host = "0.0.0.0";
         private int port = 9090;
         private int maxFrameSize = 10 * 1024 * 1024;
@@ -160,6 +172,11 @@ public class NexaMaster {
 
         public Builder heartbeatCheckInterval(Duration interval) {
             this.heartbeatCheckInterval = interval;
+            return this;
+        }
+
+        public Builder addHandler(MessageHandler handler) {
+            this.handlers.add(handler);
             return this;
         }
 

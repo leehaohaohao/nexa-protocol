@@ -153,7 +153,8 @@ const file_register_proto_rawDesc = "" +
 	"\aversion\x18\x04 \x01(\tR\aversion\"F\n" +
 	"\x10RegisterResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
-	"\amessage\x18\x02 \x01(\tR\amessageB3Z1github.com/leehaohaohao/nexa-protocol/go/messagesb\x06proto3"
+	"\amessage\x18\x02 \x01(\tR\amessageBF\n" +
+	"\x11com.nexa.protocolZ1github.com/leehaohaohao/nexa-protocol/go/messagesb\x06proto3"
 
 var (
 	file_register_proto_rawDescOnce sync.Once

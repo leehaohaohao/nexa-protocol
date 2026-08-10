@@ -80,7 +80,8 @@ const file_disconnect_proto_rawDesc = "" +
 	"\x10disconnect.proto\x12\rnexa_protocol\"H\n" +
 	"\x11DisconnectRequest\x12\x1b\n" +
 	"\trunner_id\x18\x01 \x01(\tR\brunnerId\x12\x16\n" +
-	"\x06reason\x18\x02 \x01(\tR\x06reasonB3Z1github.com/leehaohaohao/nexa-protocol/go/messagesb\x06proto3"
+	"\x06reason\x18\x02 \x01(\tR\x06reasonBF\n" +
+	"\x11com.nexa.protocolZ1github.com/leehaohaohao/nexa-protocol/go/messagesb\x06proto3"
 
 var (
 	file_disconnect_proto_rawDescOnce sync.Once

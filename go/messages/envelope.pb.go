@@ -126,7 +126,8 @@ const file_envelope_proto_rawDesc = "" +
 	"\tsource_id\x18\x04 \x01(\tR\bsourceId\x12\x1b\n" +
 	"\ttarget_id\x18\x05 \x01(\tR\btargetId\x12\x1c\n" +
 	"\ttimestamp\x18\x06 \x01(\x03R\ttimestamp\x12\x18\n" +
-	"\apayload\x18\a \x01(\fR\apayloadB3Z1github.com/leehaohaohao/nexa-protocol/go/messagesb\x06proto3"
+	"\apayload\x18\a \x01(\fR\apayloadBF\n" +
+	"\x11com.nexa.protocolZ1github.com/leehaohaohao/nexa-protocol/go/messagesb\x06proto3"
 
 var (
 	file_envelope_proto_rawDescOnce sync.Once

@@ -96,3 +96,23 @@ func BuildHeartbeatResponse(targetId string) *messages.Envelope {
 	payload, _ := proto.Marshal(resp)
 	return BuildEnvelope(messages.MessageType_HEARTBEAT_RESP, payload, "master", targetId)
 }
+
+// BuildTaskDispatchRequest 构建任务下发请求
+func BuildTaskDispatchRequest(targetId string, req *messages.TaskRequest) *messages.Envelope {
+	payload, _ := proto.Marshal(req)
+	return BuildEnvelope(messages.MessageType_TASK_DISPATCH_REQ, payload, "master", targetId)
+}
+
+// BuildTaskDispatchResponse 构建任务执行回执
+func BuildTaskDispatchResponse(sourceId, taskId string, success bool, exitCode int32, output, errMsg string) *messages.Envelope {
+	resp := &messages.TaskResponse{
+		TaskId:   taskId,
+		RunnerId: sourceId,
+		Success:  success,
+		ExitCode: exitCode,
+		Output:   output,
+		Error:    errMsg,
+	}
+	payload, _ := proto.Marshal(resp)
+	return BuildEnvelope(messages.MessageType_TASK_DISPATCH_RESP, payload, sourceId, "master")
+}

@@ -9,6 +9,8 @@ import com.nexa.protocol.Heartbeat.HeartbeatRequest;
 import com.nexa.protocol.Heartbeat.HeartbeatResponse;
 import com.nexa.protocol.Register.RegisterRequest;
 import com.nexa.protocol.Register.RegisterResponse;
+import com.nexa.protocol.Task.TaskRequest;
+import com.nexa.protocol.Task.TaskResponse;
 
 import java.util.UUID;
 
@@ -106,6 +108,33 @@ public class ProtocolCodec {
 
     public static DisconnectRequest parseDisconnectRequest(byte[] payload) throws InvalidProtocolBufferException {
         return DisconnectRequest.parseFrom(payload);
+    }
+
+    // ---- Task Dispatch (Master) ----
+
+    public static Envelope buildTaskDispatchRequest(String targetId, TaskRequest req) {
+        return buildEnvelope(MessageType.TASK_DISPATCH_REQ, req.toByteArray(), "master", targetId);
+    }
+
+    public static Envelope buildTaskDispatchResponse(String sourceId, String taskId, boolean success,
+                                                     int exitCode, String output, String error) {
+        TaskResponse resp = TaskResponse.newBuilder()
+                .setTaskId(taskId)
+                .setRunnerId(sourceId)
+                .setSuccess(success)
+                .setExitCode(exitCode)
+                .setOutput(output)
+                .setError(error)
+                .build();
+        return buildEnvelope(MessageType.TASK_DISPATCH_RESP, resp.toByteArray(), sourceId, "master");
+    }
+
+    public static TaskRequest parseTaskRequest(byte[] payload) throws InvalidProtocolBufferException {
+        return TaskRequest.parseFrom(payload);
+    }
+
+    public static TaskResponse parseTaskResponse(byte[] payload) throws InvalidProtocolBufferException {
+        return TaskResponse.parseFrom(payload);
     }
 
     // ---- Envelope 解析 ----

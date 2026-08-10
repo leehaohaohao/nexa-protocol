@@ -15,4 +15,8 @@ enum MessageType {
 
   DISCONNECT_REQ = 5;
 
+  TASK_DISPATCH_REQ = 6;
+
+  TASK_DISPATCH_RESP = 7;
+
 }

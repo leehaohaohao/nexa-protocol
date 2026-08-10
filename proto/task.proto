@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package nexa_protocol;
+option go_package = "github.com/leehaohaohao/nexa-protocol/go/messages";
+option java_package = "com.nexa.protocol";
+message TaskRequest {
+
+  string task_id = 1;
+
+  string service_id = 2;
+
+  string deploy_name = 3;
+
+  string action = 4;
+
+  string volume_dir = 5;
+
+  map<string, string> config = 6;
+
+  string artifact_url = 7;
+}
+
+message TaskResponse {
+
+  string task_id = 1;
+
+  string runner_id = 2;
+
+  bool success = 3;
+
+  int32 exit_code = 4;
+
+  string output = 5;
+
+  string error = 6;
+}

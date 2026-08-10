@@ -144,7 +144,8 @@ const file_heartbeat_proto_rawDesc = "" +
 	"\tcpu_usage\x18\x03 \x01(\x01R\bcpuUsage\x12!\n" +
 	"\fmemory_usage\x18\x04 \x01(\x01R\vmemoryUsage\"-\n" +
 	"\x11HeartbeatResponse\x12\x18\n" +
-	"\asuccess\x18\x01 \x01(\bR\asuccessB3Z1github.com/leehaohaohao/nexa-protocol/go/messagesb\x06proto3"
+	"\asuccess\x18\x01 \x01(\bR\asuccessBF\n" +
+	"\x11com.nexa.protocolZ1github.com/leehaohaohao/nexa-protocol/go/messagesb\x06proto3"
 
 var (
 	file_heartbeat_proto_rawDescOnce sync.Once

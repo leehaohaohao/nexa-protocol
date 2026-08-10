@@ -24,12 +24,14 @@ const (
 type MessageType int32
 
 const (
-	MessageType_UNKNOWN        MessageType = 0
-	MessageType_REGISTER_REQ   MessageType = 1
-	MessageType_REGISTER_RESP  MessageType = 2
-	MessageType_HEARTBEAT_REQ  MessageType = 3
-	MessageType_HEARTBEAT_RESP MessageType = 4
-	MessageType_DISCONNECT_REQ MessageType = 5
+	MessageType_UNKNOWN            MessageType = 0
+	MessageType_REGISTER_REQ       MessageType = 1
+	MessageType_REGISTER_RESP      MessageType = 2
+	MessageType_HEARTBEAT_REQ      MessageType = 3
+	MessageType_HEARTBEAT_RESP     MessageType = 4
+	MessageType_DISCONNECT_REQ     MessageType = 5
+	MessageType_TASK_DISPATCH_REQ  MessageType = 6
+	MessageType_TASK_DISPATCH_RESP MessageType = 7
 )
 
 // Enum value maps for MessageType.
@@ -41,14 +43,18 @@ var (
 		3: "HEARTBEAT_REQ",
 		4: "HEARTBEAT_RESP",
 		5: "DISCONNECT_REQ",
+		6: "TASK_DISPATCH_REQ",
+		7: "TASK_DISPATCH_RESP",
 	}
 	MessageType_value = map[string]int32{
-		"UNKNOWN":        0,
-		"REGISTER_REQ":   1,
-		"REGISTER_RESP":  2,
-		"HEARTBEAT_REQ":  3,
-		"HEARTBEAT_RESP": 4,
-		"DISCONNECT_REQ": 5,
+		"UNKNOWN":            0,
+		"REGISTER_REQ":       1,
+		"REGISTER_RESP":      2,
+		"HEARTBEAT_REQ":      3,
+		"HEARTBEAT_RESP":     4,
+		"DISCONNECT_REQ":     5,
+		"TASK_DISPATCH_REQ":  6,
+		"TASK_DISPATCH_RESP": 7,
 	}
 )
 
@@ -83,14 +89,17 @@ var File_common_proto protoreflect.FileDescriptor
 
 const file_common_proto_rawDesc = "" +
 	"\n" +
-	"\fcommon.proto\x12\rnexa_protocol*z\n" +
+	"\fcommon.proto\x12\rnexa_protocol*\xa9\x01\n" +
 	"\vMessageType\x12\v\n" +
 	"\aUNKNOWN\x10\x00\x12\x10\n" +
 	"\fREGISTER_REQ\x10\x01\x12\x11\n" +
 	"\rREGISTER_RESP\x10\x02\x12\x11\n" +
 	"\rHEARTBEAT_REQ\x10\x03\x12\x12\n" +
 	"\x0eHEARTBEAT_RESP\x10\x04\x12\x12\n" +
-	"\x0eDISCONNECT_REQ\x10\x05B3Z1github.com/leehaohaohao/nexa-protocol/go/messagesb\x06proto3"
+	"\x0eDISCONNECT_REQ\x10\x05\x12\x15\n" +
+	"\x11TASK_DISPATCH_REQ\x10\x06\x12\x16\n" +
+	"\x12TASK_DISPATCH_RESP\x10\aBF\n" +
+	"\x11com.nexa.protocolZ1github.com/leehaohaohao/nexa-protocol/go/messagesb\x06proto3"
 
 var (
 	file_common_proto_rawDescOnce sync.Once
