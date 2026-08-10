@@ -12,6 +12,14 @@
 
 ## Go
 
+### v0.3.0 (2026-08-10)
+
+#### 新增
+
+- 任务下发消息类型：`MessageType` 新增 `TASK_DISPATCH_REQ = 6` / `TASK_DISPATCH_RESP = 7`（`proto/common.proto`）
+- `TaskRequest` / `TaskResponse`（`proto/task.proto`）：任务执行请求与回执，业务配置收敛进 `config` map 字段
+- codec 层补充 `BuildTaskDispatchRequest` / `BuildTaskDispatchResponse`
+
 ### v0.2.0 (2026-06-25)
 
 #### 新增
@@ -44,6 +52,17 @@
 ---
 
 ## Java
+
+### v0.2.0 (2026-08-10)
+
+#### 新增
+
+- 任务下发消息类型：`MessageType` 新增 `TASK_DISPATCH_REQ = 6` / `TASK_DISPATCH_RESP = 7`（`proto/common.proto`）
+- `TaskRequest` / `TaskResponse`（`proto/task.proto`）：任务执行请求与回执，业务配置收敛进 `config` map 字段
+- `NexaMaster` handler 链改为可扩展注册：`Builder.addHandler` / `registerHandler`
+- `TaskResultHandler`：处理 `TASK_DISPATCH_RESP` 并回调 `NexaMasterListener.onTaskResult`
+- `NexaMasterListener` 新增 `onTaskResult` 默认回调
+- `ProtocolCodec` 补充 `buildTaskDispatchRequest` / `buildTaskDispatchResponse` 及对应解析方法
 
 ### v0.1.1 (2026-06-29)
 
