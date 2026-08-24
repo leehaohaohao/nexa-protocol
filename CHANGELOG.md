@@ -12,6 +12,15 @@
 
 ## Go
 
+### v0.4.0 (2026-08-24)
+
+#### 新增
+
+- 容器状态/日志查询消息类型：`MessageType` 新增 `CONTAINER_STATUS_REQ = 8` / `CONTAINER_STATUS_RESP = 9`、`CONTAINER_LOGS_REQ = 10` / `CONTAINER_LOGS_RESP = 11`（`proto/common.proto`）
+- `ContainerStatusRequest/Response`、`ContainerLogsRequest/Response`（`proto/query.proto`）：远程容器状态与日志查询，复用 Envelope 的 `request_id` 做请求/响应关联
+- codec 层补充 `BuildContainerStatusRequest/Response`、`BuildContainerLogsRequest/Response`，响应构造支持回填请求 `request_id`
+- master 新增 `ContainerStatusHandler` / `ContainerLogsHandler` 处理查询回执；可选 `QueryListener` 扩展接口（`OnContainerStatus` / `OnContainerLogs`），原 `Listener` 保持向后兼容
+
 ### v0.3.0 (2026-08-10)
 
 #### 新增
@@ -52,6 +61,16 @@
 ---
 
 ## Java
+
+### v0.4.0 (2026-08-24)
+
+#### 新增
+
+- 容器状态/日志查询消息类型：`MessageType` 新增 `CONTAINER_STATUS_REQ = 8` / `CONTAINER_STATUS_RESP = 9`、`CONTAINER_LOGS_REQ = 10` / `CONTAINER_LOGS_RESP = 11`（`proto/common.proto`）
+- `ContainerStatusRequest/Response`、`ContainerLogsRequest/Response`（`proto/query.proto`）：远程容器状态与日志查询，复用 Envelope 的 `request_id` 做请求/响应关联
+- `ProtocolCodec` 补充 `buildContainerStatusRequest/Response`、`buildContainerLogsRequest/Response` 及对应解析方法，响应构造支持回填请求 `request_id`
+- `NexaMaster` 新增 `ContainerStatusHandler` / `ContainerLogsHandler` 处理查询回执（handler 链可扩展注册）
+- `NexaMasterListener` 新增 `onContainerStatus` / `onContainerLogs` 默认回调
 
 ### v0.2.0 (2026-08-10)
 
