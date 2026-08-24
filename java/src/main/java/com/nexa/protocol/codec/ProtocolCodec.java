@@ -7,6 +7,10 @@ import com.nexa.protocol.Disconnect.DisconnectRequest;
 import com.nexa.protocol.EnvelopeOuterClass.Envelope;
 import com.nexa.protocol.Heartbeat.HeartbeatRequest;
 import com.nexa.protocol.Heartbeat.HeartbeatResponse;
+import com.nexa.protocol.Query.ContainerLogsRequest;
+import com.nexa.protocol.Query.ContainerLogsResponse;
+import com.nexa.protocol.Query.ContainerStatusRequest;
+import com.nexa.protocol.Query.ContainerStatusResponse;
 import com.nexa.protocol.Register.RegisterRequest;
 import com.nexa.protocol.Register.RegisterResponse;
 import com.nexa.protocol.Task.TaskRequest;
@@ -35,6 +39,16 @@ public class ProtocolCodec {
 
     public static Envelope buildEnvelope(MessageType type, byte[] payload, String sourceId) {
         return buildEnvelope(type, payload, sourceId, "");
+    }
+
+    /**
+     * 用指定 request_id 构建 Envelope，供响应回填请求关联使用
+     */
+    private static Envelope buildEnvelopeWithRequestId(String requestId, MessageType type, byte[] payload,
+                                                       String sourceId, String targetId) {
+        return buildEnvelope(type, payload, sourceId, targetId).toBuilder()
+                .setRequestId(requestId)
+                .build();
     }
 
     // ---- Register (Client) ----
@@ -135,6 +149,50 @@ public class ProtocolCodec {
 
     public static TaskResponse parseTaskResponse(byte[] payload) throws InvalidProtocolBufferException {
         return TaskResponse.parseFrom(payload);
+    }
+
+    // ---- Container Status Query (Master) ----
+
+    public static Envelope buildContainerStatusRequest(String targetId, ContainerStatusRequest req) {
+        return buildEnvelope(MessageType.CONTAINER_STATUS_REQ, req.toByteArray(), "master", targetId);
+    }
+
+    /**
+     * 构建容器状态查询响应（runner → master），回填请求 request_id 供主节点关联
+     */
+    public static Envelope buildContainerStatusResponse(String requestId, String sourceId, ContainerStatusResponse resp) {
+        return buildEnvelopeWithRequestId(requestId, MessageType.CONTAINER_STATUS_RESP,
+                resp.toByteArray(), sourceId, "master");
+    }
+
+    public static ContainerStatusRequest parseContainerStatusRequest(byte[] payload) throws InvalidProtocolBufferException {
+        return ContainerStatusRequest.parseFrom(payload);
+    }
+
+    public static ContainerStatusResponse parseContainerStatusResponse(byte[] payload) throws InvalidProtocolBufferException {
+        return ContainerStatusResponse.parseFrom(payload);
+    }
+
+    // ---- Container Logs Query (Master) ----
+
+    public static Envelope buildContainerLogsRequest(String targetId, ContainerLogsRequest req) {
+        return buildEnvelope(MessageType.CONTAINER_LOGS_REQ, req.toByteArray(), "master", targetId);
+    }
+
+    /**
+     * 构建容器日志查询响应（runner → master），回填请求 request_id 供主节点关联
+     */
+    public static Envelope buildContainerLogsResponse(String requestId, String sourceId, ContainerLogsResponse resp) {
+        return buildEnvelopeWithRequestId(requestId, MessageType.CONTAINER_LOGS_RESP,
+                resp.toByteArray(), sourceId, "master");
+    }
+
+    public static ContainerLogsRequest parseContainerLogsRequest(byte[] payload) throws InvalidProtocolBufferException {
+        return ContainerLogsRequest.parseFrom(payload);
+    }
+
+    public static ContainerLogsResponse parseContainerLogsResponse(byte[] payload) throws InvalidProtocolBufferException {
+        return ContainerLogsResponse.parseFrom(payload);
     }
 
     // ---- Envelope 解析 ----

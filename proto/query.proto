@@ -1,0 +1,53 @@
+syntax = "proto3";
+
+package nexa_protocol;
+option go_package = "github.com/leehaohaohao/nexa-protocol/go/messages";
+option java_package = "com.nexa.protocol";
+
+message ContainerStatusRequest {
+
+  string service_id = 1;
+
+  string deploy_name = 2;
+
+  string volume_dir = 3;
+}
+
+message ContainerStatusResponse {
+
+  string runner_id = 1;
+
+  bool running = 2;
+
+  string status = 3; // running / stopped / restarting / exited...
+
+  string output = 4;
+
+  string error = 5;
+}
+
+message ContainerLogsRequest {
+
+  string service_id = 1;
+
+  string deploy_name = 2;
+
+  string volume_dir = 3;
+
+  int32 tail = 4; // 尾部行数
+
+  string since = 5; // 可选
+
+  string until = 6; // 可选
+
+  bool timestamps = 7;
+}
+
+message ContainerLogsResponse {
+
+  string runner_id = 1;
+
+  string content = 2;
+
+  string error = 3;
+}

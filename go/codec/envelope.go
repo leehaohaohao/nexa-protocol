@@ -20,6 +20,13 @@ func BuildEnvelope(msgType messages.MessageType, payload []byte, sourceId, targe
 	}
 }
 
+// buildEnvelopeWithRequestId 用指定 request_id 构建 Envelope，供响应回填请求关联使用
+func buildEnvelopeWithRequestId(requestId string, msgType messages.MessageType, payload []byte, sourceId, targetId string) *messages.Envelope {
+	env := BuildEnvelope(msgType, payload, sourceId, targetId)
+	env.RequestId = requestId
+	return env
+}
+
 // MarshalEnvelope 序列化 Envelope 为字节
 func MarshalEnvelope(env *messages.Envelope) ([]byte, error) {
 	return proto.Marshal(env)
@@ -115,4 +122,28 @@ func BuildTaskDispatchResponse(sourceId, taskId string, success bool, exitCode i
 	}
 	payload, _ := proto.Marshal(resp)
 	return BuildEnvelope(messages.MessageType_TASK_DISPATCH_RESP, payload, sourceId, "master")
+}
+
+// BuildContainerStatusRequest 构建容器状态查询请求（master → runner）
+func BuildContainerStatusRequest(targetId string, req *messages.ContainerStatusRequest) *messages.Envelope {
+	payload, _ := proto.Marshal(req)
+	return BuildEnvelope(messages.MessageType_CONTAINER_STATUS_REQ, payload, "master", targetId)
+}
+
+// BuildContainerStatusResponse 构建容器状态查询响应（runner → master），回填请求 request_id 供主节点关联
+func BuildContainerStatusResponse(requestId, sourceId string, resp *messages.ContainerStatusResponse) *messages.Envelope {
+	payload, _ := proto.Marshal(resp)
+	return buildEnvelopeWithRequestId(requestId, messages.MessageType_CONTAINER_STATUS_RESP, payload, sourceId, "master")
+}
+
+// BuildContainerLogsRequest 构建容器日志查询请求（master → runner）
+func BuildContainerLogsRequest(targetId string, req *messages.ContainerLogsRequest) *messages.Envelope {
+	payload, _ := proto.Marshal(req)
+	return BuildEnvelope(messages.MessageType_CONTAINER_LOGS_REQ, payload, "master", targetId)
+}
+
+// BuildContainerLogsResponse 构建容器日志查询响应（runner → master），回填请求 request_id 供主节点关联
+func BuildContainerLogsResponse(requestId, sourceId string, resp *messages.ContainerLogsResponse) *messages.Envelope {
+	payload, _ := proto.Marshal(resp)
+	return buildEnvelopeWithRequestId(requestId, messages.MessageType_CONTAINER_LOGS_RESP, payload, sourceId, "master")
 }

@@ -49,6 +49,8 @@ public class NexaMaster {
         this.handlers.add(new HeartbeatHandler(sessionManager, listener));
         this.handlers.add(new DisconnectHandler(sessionManager, listener));
         this.handlers.add(new TaskResultHandler(sessionManager, listener));
+        this.handlers.add(new ContainerStatusHandler(sessionManager, listener));
+        this.handlers.add(new ContainerLogsHandler(sessionManager, listener));
         this.handlers.addAll(builder.handlers);
     }
 

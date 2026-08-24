@@ -91,6 +91,8 @@ func New(listener Listener, opts ...Option) *NexaMaster {
 		NewRegisterHandler(m.sessions, listener, m.logger),
 		NewHeartbeatHandler(m.sessions, listener, m.logger),
 		NewDisconnectHandler(m.sessions, listener, m.logger),
+		NewContainerStatusHandler(m.sessions, listener, m.logger),
+		NewContainerLogsHandler(m.sessions, listener, m.logger),
 	}
 	m.dispatcher = NewMessageDispatcher(handlers, m.logger)
 
