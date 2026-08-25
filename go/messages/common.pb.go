@@ -36,6 +36,9 @@ const (
 	MessageType_CONTAINER_STATUS_RESP MessageType = 9
 	MessageType_CONTAINER_LOGS_REQ    MessageType = 10
 	MessageType_CONTAINER_LOGS_RESP   MessageType = 11
+	MessageType_ARTIFACT_REQ          MessageType = 12
+	MessageType_ARTIFACT_DATA         MessageType = 13
+	MessageType_ARTIFACT_ACK          MessageType = 14
 )
 
 // Enum value maps for MessageType.
@@ -53,6 +56,9 @@ var (
 		9:  "CONTAINER_STATUS_RESP",
 		10: "CONTAINER_LOGS_REQ",
 		11: "CONTAINER_LOGS_RESP",
+		12: "ARTIFACT_REQ",
+		13: "ARTIFACT_DATA",
+		14: "ARTIFACT_ACK",
 	}
 	MessageType_value = map[string]int32{
 		"UNKNOWN":               0,
@@ -67,6 +73,9 @@ var (
 		"CONTAINER_STATUS_RESP": 9,
 		"CONTAINER_LOGS_REQ":    10,
 		"CONTAINER_LOGS_RESP":   11,
+		"ARTIFACT_REQ":          12,
+		"ARTIFACT_DATA":         13,
+		"ARTIFACT_ACK":          14,
 	}
 )
 
@@ -101,7 +110,7 @@ var File_common_proto protoreflect.FileDescriptor
 
 const file_common_proto_rawDesc = "" +
 	"\n" +
-	"\fcommon.proto\x12\rnexa_protocol*\x8f\x02\n" +
+	"\fcommon.proto\x12\rnexa_protocol*\xc6\x02\n" +
 	"\vMessageType\x12\v\n" +
 	"\aUNKNOWN\x10\x00\x12\x10\n" +
 	"\fREGISTER_REQ\x10\x01\x12\x11\n" +
@@ -115,7 +124,10 @@ const file_common_proto_rawDesc = "" +
 	"\x15CONTAINER_STATUS_RESP\x10\t\x12\x16\n" +
 	"\x12CONTAINER_LOGS_REQ\x10\n" +
 	"\x12\x17\n" +
-	"\x13CONTAINER_LOGS_RESP\x10\vBF\n" +
+	"\x13CONTAINER_LOGS_RESP\x10\v\x12\x10\n" +
+	"\fARTIFACT_REQ\x10\f\x12\x11\n" +
+	"\rARTIFACT_DATA\x10\r\x12\x10\n" +
+	"\fARTIFACT_ACK\x10\x0eBF\n" +
 	"\x11com.nexa.protocolZ1github.com/leehaohaohao/nexa-protocol/go/messagesb\x06proto3"
 
 var (

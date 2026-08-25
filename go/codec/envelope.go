@@ -51,13 +51,19 @@ func UnmarshalMessage(data []byte, msg proto.Message) error {
 	return proto.Unmarshal(data, msg)
 }
 
-// BuildRegisterRequest 构建注册请求
+// BuildRegisterRequest 构建注册请求（不带 token，向后兼容）
 func BuildRegisterRequest(runnerId, hostname, ip, version string) *messages.Envelope {
+	return BuildRegisterRequestWithToken(runnerId, hostname, ip, version, "")
+}
+
+// BuildRegisterRequestWithToken 构建带 token 的注册请求（L1 注册认证）
+func BuildRegisterRequestWithToken(runnerId, hostname, ip, version, token string) *messages.Envelope {
 	req := &messages.RegisterRequest{
 		RunnerId: runnerId,
 		Hostname: hostname,
 		Ip:       ip,
 		Version:  version,
+		Token:    token,
 	}
 	payload, _ := proto.Marshal(req)
 	return BuildEnvelope(messages.MessageType_REGISTER_REQ, payload, runnerId, "")
@@ -146,4 +152,22 @@ func BuildContainerLogsRequest(targetId string, req *messages.ContainerLogsReque
 func BuildContainerLogsResponse(requestId, sourceId string, resp *messages.ContainerLogsResponse) *messages.Envelope {
 	payload, _ := proto.Marshal(resp)
 	return buildEnvelopeWithRequestId(requestId, messages.MessageType_CONTAINER_LOGS_RESP, payload, sourceId, "master")
+}
+
+// BuildArtifactRequest 构建产物请求（runner → master）
+func BuildArtifactRequest(runnerId string, req *messages.ArtifactRequest) *messages.Envelope {
+	payload, _ := proto.Marshal(req)
+	return BuildEnvelope(messages.MessageType_ARTIFACT_REQ, payload, runnerId, "master")
+}
+
+// BuildArtifactChunk 构建产物分块（master → runner），回填请求 request_id 作为 transfer_id 关联整次传输
+func BuildArtifactChunk(requestId, targetId string, chunk *messages.ArtifactChunk) *messages.Envelope {
+	payload, _ := proto.Marshal(chunk)
+	return buildEnvelopeWithRequestId(requestId, messages.MessageType_ARTIFACT_DATA, payload, "master", targetId)
+}
+
+// BuildArtifactAck 构建产物传输确认（runner → master），回填请求 request_id 供主节点关联
+func BuildArtifactAck(requestId, runnerId string, ack *messages.ArtifactAck) *messages.Envelope {
+	payload, _ := proto.Marshal(ack)
+	return buildEnvelopeWithRequestId(requestId, messages.MessageType_ARTIFACT_ACK, payload, runnerId, "master")
 }

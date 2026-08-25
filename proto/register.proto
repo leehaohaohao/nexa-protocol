@@ -12,6 +12,8 @@ message RegisterRequest {
   string ip = 3;
 
   string version = 4;
+
+  string token = 5;
 }
 
 message RegisterResponse {

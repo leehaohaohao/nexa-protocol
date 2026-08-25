@@ -1,5 +1,7 @@
 package com.nexa.protocol.master;
 
+import com.nexa.protocol.Artifact.ArtifactRequest;
+import com.nexa.protocol.EnvelopeOuterClass.Envelope;
 import com.nexa.protocol.Heartbeat.HeartbeatRequest;
 import com.nexa.protocol.Query.ContainerLogsResponse;
 import com.nexa.protocol.Query.ContainerStatusResponse;
@@ -31,5 +33,13 @@ public interface NexaMasterListener {
      * 容器日志查询回执回调，子节点响应日志查询
      */
     default void onContainerLogs(RunnerSession session, ContainerLogsResponse resp) {
+    }
+
+    /**
+     * 产物请求回调（子节点请求产物）。
+     * 业务方在回调内查注册表定位产物，并通过 {@code session.send} 分块回发
+     * （构造分块时复用 {@code requestEnvelope.getRequestId()} 作为 transfer_id）。
+     */
+    default void onArtifactRequest(RunnerSession session, Envelope requestEnvelope, ArtifactRequest req) {
     }
 }

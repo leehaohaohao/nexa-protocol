@@ -27,4 +27,10 @@ enum MessageType {
 
   CONTAINER_LOGS_RESP = 11;
 
+  ARTIFACT_REQ = 12;
+
+  ARTIFACT_DATA = 13;
+
+  ARTIFACT_ACK = 14;
+
 }

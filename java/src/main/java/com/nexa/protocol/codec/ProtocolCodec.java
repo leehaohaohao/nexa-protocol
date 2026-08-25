@@ -2,6 +2,9 @@ package com.nexa.protocol.codec;
 
 import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
+import com.nexa.protocol.Artifact.ArtifactAck;
+import com.nexa.protocol.Artifact.ArtifactChunk;
+import com.nexa.protocol.Artifact.ArtifactRequest;
 import com.nexa.protocol.Common.MessageType;
 import com.nexa.protocol.Disconnect.DisconnectRequest;
 import com.nexa.protocol.EnvelopeOuterClass.Envelope;
@@ -54,11 +57,19 @@ public class ProtocolCodec {
     // ---- Register (Client) ----
 
     public static Envelope buildRegisterRequest(String runnerId, String hostname, String ip, String version) {
+        return buildRegisterRequest(runnerId, hostname, ip, version, "");
+    }
+
+    /**
+     * 构建带 token 的注册请求（L1 注册认证）
+     */
+    public static Envelope buildRegisterRequest(String runnerId, String hostname, String ip, String version, String token) {
         RegisterRequest req = RegisterRequest.newBuilder()
                 .setRunnerId(runnerId)
                 .setHostname(hostname)
                 .setIp(ip)
                 .setVersion(version)
+                .setToken(token)
                 .build();
         return buildEnvelope(MessageType.REGISTER_REQ, req.toByteArray(), runnerId);
     }
@@ -193,6 +204,42 @@ public class ProtocolCodec {
 
     public static ContainerLogsResponse parseContainerLogsResponse(byte[] payload) throws InvalidProtocolBufferException {
         return ContainerLogsResponse.parseFrom(payload);
+    }
+
+    // ---- Artifact Transfer (Client) ----
+
+    public static Envelope buildArtifactRequest(String runnerId, ArtifactRequest req) {
+        return buildEnvelope(MessageType.ARTIFACT_REQ, req.toByteArray(), runnerId, "master");
+    }
+
+    public static ArtifactRequest parseArtifactRequest(byte[] payload) throws InvalidProtocolBufferException {
+        return ArtifactRequest.parseFrom(payload);
+    }
+
+    // ---- Artifact Transfer (Master) ----
+
+    /**
+     * 构建产物分块（master → runner），回填请求 request_id 作为 transfer_id 关联整次传输
+     */
+    public static Envelope buildArtifactChunk(String requestId, String targetId, ArtifactChunk chunk) {
+        return buildEnvelopeWithRequestId(requestId, MessageType.ARTIFACT_DATA, chunk.toByteArray(), "master", targetId);
+    }
+
+    public static ArtifactChunk parseArtifactChunk(byte[] payload) throws InvalidProtocolBufferException {
+        return ArtifactChunk.parseFrom(payload);
+    }
+
+    // ---- Artifact Ack (Client) ----
+
+    /**
+     * 构建产物传输确认（runner → master），回填请求 request_id 供主节点关联
+     */
+    public static Envelope buildArtifactAck(String requestId, String runnerId, ArtifactAck ack) {
+        return buildEnvelopeWithRequestId(requestId, MessageType.ARTIFACT_ACK, ack.toByteArray(), runnerId, "master");
+    }
+
+    public static ArtifactAck parseArtifactAck(byte[] payload) throws InvalidProtocolBufferException {
+        return ArtifactAck.parseFrom(payload);
     }
 
     // ---- Envelope 解析 ----

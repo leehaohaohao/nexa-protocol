@@ -1,0 +1,41 @@
+syntax = "proto3";
+
+package nexa_protocol;
+option go_package = "github.com/leehaohaohao/nexa-protocol/go/messages";
+option java_package = "com.nexa.protocol";
+
+// ArtifactRequest 产物请求（子节点 → 主节点）
+message ArtifactRequest {
+
+  string service_id = 1;
+
+  string type = 2; // JAR / DIST
+
+  int32 version = 3; // 0 = 最新
+}
+
+// ArtifactChunk 产物分块（主节点 → 子节点）
+message ArtifactChunk {
+
+  string transfer_id = 1; // 复用 Envelope.request_id
+
+  int32 sequence = 2; // 第几块，从 0
+
+  int32 total_chunks = 3;
+
+  int64 total_size = 4;
+
+  string checksum = 5; // 整体 sha256（末块携带）
+
+  bytes data = 6; // 单块 < maxFrameSize（现 10MB）
+}
+
+// ArtifactAck 产物传输确认（子节点 → 主节点）
+message ArtifactAck {
+
+  string transfer_id = 1;
+
+  bool ok = 2;
+
+  string error = 3;
+}

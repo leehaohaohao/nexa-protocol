@@ -51,6 +51,7 @@ public class NexaMaster {
         this.handlers.add(new TaskResultHandler(sessionManager, listener));
         this.handlers.add(new ContainerStatusHandler(sessionManager, listener));
         this.handlers.add(new ContainerLogsHandler(sessionManager, listener));
+        this.handlers.add(new ArtifactHandler(sessionManager, listener));
         this.handlers.addAll(builder.handlers);
     }
 
