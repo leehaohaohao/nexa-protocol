@@ -12,6 +12,16 @@
 
 ## Go
 
+### v0.5.0 (2026-08-25)
+
+#### 新增
+
+- 子节点认证：`RegisterRequest` 新增 `token` 字段（`proto/register.proto`），codec 补充 `BuildRegisterRequestWithToken`（L1 注册认证）
+- 产物传输消息类型：`MessageType` 新增 `ARTIFACT_REQ = 12` / `ARTIFACT_DATA = 13` / `ARTIFACT_ACK = 14`（`proto/common.proto`）
+- `ArtifactRequest/Chunk/Ack`（`proto/artifact.proto`）：产物分块传输，复用 Envelope 的 `request_id` 关联整次传输（`ArtifactChunk.transfer_id`）
+- codec 层补充 `BuildArtifactRequest/Chunk/Ack`，分块与确认回填请求 `request_id`
+- master 新增 `ArtifactHandler` 处理产物请求；可选 `ArtifactListener` 扩展接口（`OnArtifactRequest`），原 `Listener` 保持向后兼容
+
 ### v0.4.0 (2026-08-24)
 
 #### 新增
@@ -61,6 +71,17 @@
 ---
 
 ## Java
+
+### v0.5.0 (2026-08-25)
+
+#### 新增
+
+- 子节点认证：`RegisterRequest` 新增 `token` 字段（`proto/register.proto`），`ProtocolCodec.buildRegisterRequest` 增加带 token 重载（L1 注册认证）
+- 产物传输消息类型：`MessageType` 新增 `ARTIFACT_REQ = 12` / `ARTIFACT_DATA = 13` / `ARTIFACT_ACK = 14`（`proto/common.proto`）
+- `ArtifactRequest/Chunk/Ack`（`proto/artifact.proto`）：产物分块传输，复用 Envelope 的 `request_id` 关联整次传输（`ArtifactChunk.transfer_id`）
+- `ProtocolCodec` 补充 `buildArtifactRequest/Chunk/Ack` 及对应解析方法，分块与确认回填请求 `request_id`
+- `NexaMaster` 新增 `ArtifactHandler` 处理产物请求（校验会话身份后回调）
+- `NexaMasterListener` 新增 `onArtifactRequest` 默认回调（携带请求 Envelope 与 session，供分块回发）
 
 ### v0.4.0 (2026-08-24)
 
