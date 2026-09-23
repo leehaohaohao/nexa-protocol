@@ -55,6 +55,20 @@ func (m *SessionManager) Get(runnerId string) (*RunnerSession, bool) {
 	return s, ok
 }
 
+// IsCurrent 判断该会话是否仍是注册表中该 runnerId 的当前会话。
+// 已被同 ID 新连接接管时返回 false，此时旧连接的消息必须被拒绝。
+func (m *SessionManager) IsCurrent(session *RunnerSession) bool {
+	if session == nil {
+		return false
+	}
+
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	current, ok := m.sessions[session.RunnerId]
+	return ok && current == session
+}
+
 // AllSessions 返回所有会话的快照
 func (m *SessionManager) AllSessions() []*RunnerSession {
 	m.mu.RLock()

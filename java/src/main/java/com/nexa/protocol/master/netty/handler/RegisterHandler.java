@@ -10,7 +10,6 @@ import com.nexa.protocol.master.RunnerSession;
 import com.nexa.protocol.master.SessionManager;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.util.AttributeKey;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,7 +23,6 @@ import org.slf4j.LoggerFactory;
 public class RegisterHandler implements MessageHandler {
 
     private static final Logger log = LoggerFactory.getLogger(RegisterHandler.class);
-    private static final AttributeKey<String> RUNNER_ID_ATTR = AttributeKey.valueOf("nexa.runnerId");
 
     private final SessionManager sessionManager;
     private final NexaMasterListener listener;
@@ -88,7 +86,7 @@ public class RegisterHandler implements MessageHandler {
         }
 
         // 3. 绑定会话身份（此后该连接的断开事件才代表该 runner 离线）
-        ctx.channel().attr(RUNNER_ID_ATTR).set(runnerId);
+        SessionResolver.bind(ctx, runnerId);
 
         Envelope respEnv = ProtocolCodec.buildRegisterResponse(runnerId, true, resp.getMessage());
         ctx.writeAndFlush(respEnv.toByteArray());

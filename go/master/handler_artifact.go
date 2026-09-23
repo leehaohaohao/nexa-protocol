@@ -14,7 +14,10 @@ type ArtifactListener interface {
 	OnArtifactRequest(session *RunnerSession, req *messages.ArtifactRequest)
 }
 
-// ArtifactHandler 处理 ARTIFACT_REQ 消息（runner 产物请求）
+// ArtifactHandler 处理 ARTIFACT_REQ 消息（runner 产物请求）。
+//
+// 会话取自发送连接绑定的会话（与其余已注册消息共用 resolveSession 规则），
+// 并以 Envelope.source_id 做一致性检查：ArtifactRequest 本身不带 runnerId。
 type ArtifactHandler struct {
 	sessions *SessionManager
 	listener Listener
@@ -36,11 +39,24 @@ func (h *ArtifactHandler) Handle(connCtx *ConnContext, env *messages.Envelope) {
 		return
 	}
 
-	al, ok := h.listener.(ArtifactListener)
+	session, ok := resolveSession(h.sessions, connCtx)
 	if !ok {
-		h.logger.Warn("listener does not implement ArtifactListener, ignore artifact request", "service_id", req.GetServiceId())
+		h.logger.Warn("artifact request from unregistered or superseded connection, ignored")
 		return
 	}
 
-	al.OnArtifactRequest(connCtx.Session, req)
+	if !matchesRunnerId(session, env.GetSourceId()) {
+		h.logger.Warn("artifact request source_id mismatch, ignored",
+			"declared", env.GetSourceId(), "session", session.RunnerId)
+		return
+	}
+
+	al, ok := h.listener.(ArtifactListener)
+	if !ok {
+		h.logger.Warn("listener does not implement ArtifactListener, ignore artifact request",
+			"service_id", req.GetServiceId())
+		return
+	}
+
+	al.OnArtifactRequest(session, req)
 }

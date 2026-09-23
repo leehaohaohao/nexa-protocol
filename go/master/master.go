@@ -155,7 +155,7 @@ func (m *NexaMaster) handleConn(conn net.Conn) {
 			// 已被接管说明这是旧连接的退出，不得误删新会话或把节点标记为离线
 			if m.sessions.RemoveIfPresent(connCtx.Session.RunnerId, connCtx.Session) {
 				if !connCtx.Session.timedOut.Load() {
-					m.listener.OnDisconnect(connCtx.Session.RunnerId, "connection_lost")
+					notifyDisconnect(m.listener, connCtx.Session, "connection_lost")
 				}
 			}
 		}

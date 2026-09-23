@@ -15,7 +15,10 @@ type QueryListener interface {
 	OnContainerLogs(session *RunnerSession, resp *messages.ContainerLogsResponse)
 }
 
-// ContainerStatusHandler 处理 CONTAINER_STATUS_RESP 消息（runner 查询回执）
+// ContainerStatusHandler 处理 CONTAINER_STATUS_RESP 消息（runner 查询回执）。
+//
+// 会话取自发送连接绑定的会话，并核对回执声明的 runnerId，
+// 避免伪造回执污染其他节点的状态查询结果。
 type ContainerStatusHandler struct {
 	sessions *SessionManager
 	listener Listener
@@ -37,11 +40,24 @@ func (h *ContainerStatusHandler) Handle(connCtx *ConnContext, env *messages.Enve
 		return
 	}
 
-	ql, ok := h.listener.(QueryListener)
+	session, ok := resolveSession(h.sessions, connCtx)
 	if !ok {
-		h.logger.Warn("listener does not implement QueryListener, ignore container status", "runner_id", resp.GetRunnerId())
+		h.logger.Warn("container status from unregistered or superseded connection, ignored")
 		return
 	}
 
-	ql.OnContainerStatus(connCtx.Session, resp)
+	if !matchesRunnerId(session, resp.GetRunnerId()) {
+		h.logger.Warn("container status runner_id mismatch, ignored",
+			"declared", resp.GetRunnerId(), "session", session.RunnerId)
+		return
+	}
+
+	ql, ok := h.listener.(QueryListener)
+	if !ok {
+		h.logger.Warn("listener does not implement QueryListener, ignore container status",
+			"runner_id", session.RunnerId)
+		return
+	}
+
+	ql.OnContainerStatus(session, resp)
 }

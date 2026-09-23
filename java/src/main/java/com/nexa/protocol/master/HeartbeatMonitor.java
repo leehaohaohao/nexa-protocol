@@ -72,27 +72,26 @@ public class HeartbeatMonitor {
 
             String runnerId = session.getRunnerId();
 
-            // CAS 标记超时，保证只处理一次
+            // CAS 标记超时，赢得处理权（保证同一会话只被处理一次）
             if (!session.markTimedOut()) {
-                // 其他线程已标记，跳过
                 continue;
             }
 
-            log.warn("runner {} heartbeat timeout, closing", runnerId);
+            // 先条件移除：仅当注册表中当前绑定的仍是这个过期会话时，本次才拥有通知权。
+            // 若已被同 ID 新连接接管，则不通知（新节点保持在线），只清理过期旧连接。
+            boolean removedCurrent = sessionManager.removeIfPresent(runnerId, session);
 
-            // 只关闭连接，remove 和通知由 channelInactive 处理
-            // 这样职责单一：HeartbeatMonitor 负责检测和关闭，channelInactive 负责清理
+            log.warn("runner {} heartbeat timeout, closing (current session: {})", runnerId, removedCurrent);
+
             session.close();
 
-            // 通知 listener（因为 channelInactive 中会检查 isTimedOut，所以这里需要通知）
-            try {
-                listener.onDisconnect(runnerId, "heartbeat_timeout");
-            } catch (Exception e) {
-                log.error("listener.onDisconnect error for {}", runnerId, e);
+            if (removedCurrent) {
+                try {
+                    listener.onDisconnect(session, "heartbeat_timeout");
+                } catch (Exception e) {
+                    log.error("listener.onDisconnect error for {}", runnerId, e);
+                }
             }
-
-            // 移除 session（channelInactive 中会通过 removeIfPresent 避免重复移除）
-            sessionManager.removeIfPresent(runnerId, session);
         }
     }
 }

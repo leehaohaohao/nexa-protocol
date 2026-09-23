@@ -8,14 +8,21 @@ import com.nexa.protocol.master.NexaMasterListener;
 import com.nexa.protocol.master.RunnerSession;
 import com.nexa.protocol.master.SessionManager;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.util.AttributeKey;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Optional;
+
+/**
+ * 产物请求处理器：按发送 channel 绑定的会话鉴权（与其余已注册消息共用
+ * {@link SessionResolver} 的统一规则），并用 {@code Envelope.source_id} 做一致性检查。
+ *
+ * <p>{@code ArtifactRequest} 本身不带 runnerId，因此以 source_id 作为声明身份；
+ * 它是客户端数据，只用于一致性检查，会话选择始终依据 channel 绑定。
+ */
 public class ArtifactHandler implements MessageHandler {
 
     private static final Logger log = LoggerFactory.getLogger(ArtifactHandler.class);
-    private static final AttributeKey<String> RUNNER_ID_ATTR = AttributeKey.valueOf("nexa.runnerId");
 
     private final SessionManager sessionManager;
     private final NexaMasterListener listener;
@@ -40,22 +47,24 @@ public class ArtifactHandler implements MessageHandler {
             return;
         }
 
-        String runnerId = ctx.channel().attr(RUNNER_ID_ATTR).get();
-        if (runnerId == null) {
-            log.warn("artifact request from unregistered channel {}", ctx.channel().remoteAddress());
+        Optional<RunnerSession> resolved = SessionResolver.resolve(ctx, sessionManager);
+        if (resolved.isEmpty()) {
+            log.warn("artifact request from unregistered or superseded connection {}, ignored",
+                    ctx.channel().remoteAddress());
             return;
         }
 
-        sessionManager.get(runnerId).ifPresent(session -> {
-            if (session.getChannel() != ctx.channel()) {
-                log.warn("artifact request channel mismatch for runner {}", runnerId);
-                return;
-            }
-            try {
-                listener.onArtifactRequest(session, envelope, req);
-            } catch (Exception e) {
-                log.error("listener.onArtifactRequest error for {}", runnerId, e);
-            }
-        });
+        RunnerSession session = resolved.get();
+        if (!SessionResolver.matches(session, envelope.getSourceId())) {
+            log.warn("artifact request source_id mismatch: declared={}, session={}, ignored",
+                    envelope.getSourceId(), session.getRunnerId());
+            return;
+        }
+
+        try {
+            listener.onArtifactRequest(session, envelope, req);
+        } catch (Exception e) {
+            log.error("listener.onArtifactRequest error for {}", session.getRunnerId(), e);
+        }
     }
 }
