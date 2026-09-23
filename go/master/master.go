@@ -151,9 +151,12 @@ func (m *NexaMaster) handleConn(conn net.Conn) {
 
 	defer func() {
 		if connCtx.Session != nil && connCtx.Session.RunnerId != "" {
-			m.sessions.RemoveIfPresent(connCtx.Session.RunnerId, connCtx.Session)
-			if !connCtx.Session.timedOut.Load() {
-				m.listener.OnDisconnect(connCtx.Session.RunnerId, "connection_lost")
+			// 仅当该会话仍未被新连接接管时才判定离线：
+			// 已被接管说明这是旧连接的退出，不得误删新会话或把节点标记为离线
+			if m.sessions.RemoveIfPresent(connCtx.Session.RunnerId, connCtx.Session) {
+				if !connCtx.Session.timedOut.Load() {
+					m.listener.OnDisconnect(connCtx.Session.RunnerId, "connection_lost")
+				}
 			}
 		}
 	}()

@@ -9,12 +9,27 @@ import (
 const headerSize = 4
 
 // WriteFrame 写一帧：[4字节大端序长度][data]
+// 通过 writeFull 保证整帧写出，避免底层 Writer 短写导致帧截断
 func WriteFrame(w io.Writer, data []byte) error {
 	buf := make([]byte, headerSize+len(data))
 	binary.BigEndian.PutUint32(buf[:headerSize], uint32(len(data)))
 	copy(buf[headerSize:], data)
-	_, err := w.Write(buf)
-	return err
+	return writeFull(w, buf)
+}
+
+// writeFull 循环写出直到 buf 全部写完
+func writeFull(w io.Writer, buf []byte) error {
+	for len(buf) > 0 {
+		n, err := w.Write(buf)
+		if err != nil {
+			return err
+		}
+		if n <= 0 {
+			return io.ErrShortWrite
+		}
+		buf = buf[n:]
+	}
+	return nil
 }
 
 // ReadFrame 读一帧：读取长度头，再读取对应长度的数据

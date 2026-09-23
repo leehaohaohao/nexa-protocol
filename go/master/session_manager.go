@@ -34,13 +34,16 @@ func (m *SessionManager) Remove(runnerId string) {
 }
 
 // RemoveIfPresent 仅当当前映射值与 expected 相同时移除（重连安全）
-func (m *SessionManager) RemoveIfPresent(runnerId string, expected *RunnerSession) {
+// 返回 true 表示确实移除了该会话；false 表示会话已被新连接接管，不应据此判定节点离线
+func (m *SessionManager) RemoveIfPresent(runnerId string, expected *RunnerSession) bool {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
 	if m.sessions[runnerId] == expected {
 		delete(m.sessions, runnerId)
+		return true
 	}
+	return false
 }
 
 // Get 获取会话
