@@ -19,6 +19,7 @@ type Client struct {
 	hostname  string
 	ip        string
 	version   string
+	token     string
 	heartbeat time.Duration
 	stopCh    chan struct{}
 	once      sync.Once
@@ -45,6 +46,11 @@ func WithIP(ip string) Option {
 // WithVersion 设置版本号
 func WithVersion(v string) Option {
 	return func(c *Client) { c.version = v }
+}
+
+// WithToken 设置注册令牌（L1 认证：主节点校验通过才接受注册）
+func WithToken(token string) Option {
+	return func(c *Client) { c.token = token }
 }
 
 // WithHeartbeatInterval 设置心跳间隔
@@ -78,9 +84,9 @@ func (c *Client) Connect(addr string) error {
 	return nil
 }
 
-// Register 发送注册请求并等待响应
+// Register 发送注册请求并等待响应；携带 token（若有），主节点拒绝注册（success=false）时返回错误
 func (c *Client) Register() (*messages.RegisterResponse, error) {
-	env := codec.BuildRegisterRequest(c.runnerId, c.hostname, c.ip, c.version)
+	env := codec.BuildRegisterRequestWithToken(c.runnerId, c.hostname, c.ip, c.version, c.token)
 	if err := c.sendEnvelope(env); err != nil {
 		return nil, err
 	}
@@ -97,6 +103,9 @@ func (c *Client) Register() (*messages.RegisterResponse, error) {
 	resp := &messages.RegisterResponse{}
 	if err := codec.UnmarshalMessage(respEnv.GetPayload(), resp); err != nil {
 		return nil, fmt.Errorf("unmarshal register response: %w", err)
+	}
+	if !resp.GetSuccess() {
+		return resp, fmt.Errorf("register rejected by master: %s", resp.GetMessage())
 	}
 	return resp, nil
 }
