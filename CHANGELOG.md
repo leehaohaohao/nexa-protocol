@@ -23,6 +23,7 @@
 
 #### 修复
 
+- `Client.RegisterContext` / `Register` 收到主节点拒绝（`success=false`，如 token 错误、节点未登记）时返回错误，不再当作注册成功继续运行
 - `codec.WriteFrame` 处理底层短写（新增 `writeFull`），保证整帧写出不被截断
 - master `RegisterHandler` 改为**先认证、后接管**：认证失败不再替换/关闭同 `runnerId` 的合法在线会话，也不再残留未认证会话
 - master `SessionManager.RemoveIfPresent` 返回是否真正移除；连接退出仅在确实移除会话时才回调 `OnDisconnect`，修复旧连接断开误报节点离线
@@ -30,7 +31,7 @@
 
 #### 测试
 
-- 新增 `go/client` 测试：注册超时/取消、`Reset` 会话重建、`Close` 幂等、token 透传
+- 新增 `go/client` 测试：注册超时/取消、注册被拒返回错误、`Reset` 会话重建、`Close` 幂等、token 透传
 - 新增 `go/codec` 测试：短写完整帧、零写入不挂死、帧往返、超长帧拒绝
 
 ### v0.5.0 (2026-08-25)
