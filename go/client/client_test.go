@@ -161,6 +161,69 @@ func TestSendWithoutConnection(t *testing.T) {
 	}
 }
 
+// TestRegisterRejectedReturnsError 主节点拒绝注册（success=false）时应返回错误，而非当作成功继续运行
+func TestRegisterRejectedReturnsError(t *testing.T) {
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("listen: %v", err)
+	}
+	defer ln.Close()
+
+	received := make(chan *messages.RegisterRequest, 1)
+	go func() {
+		conn, err := ln.Accept()
+		if err != nil {
+			return
+		}
+		defer conn.Close()
+
+		data, err := codec.ReadFrame(conn)
+		if err != nil {
+			return
+		}
+		env, err := codec.UnmarshalEnvelope(data)
+		if err != nil {
+			return
+		}
+		req := &messages.RegisterRequest{}
+		if err := codec.UnmarshalMessage(env.GetPayload(), req); err != nil {
+			return
+		}
+		received <- req
+
+		// 模拟主节点认证失败（如 token 错误 / 节点未登记）
+		resp := codec.BuildRegisterResponse(req.GetRunnerId(), false, "invalid token")
+		out, _ := codec.MarshalEnvelope(resp)
+		_ = codec.WriteFrame(conn, out)
+	}()
+
+	c := client.New(
+		client.WithRunnerId("runner-bad"),
+		client.WithToken("bad-token"),
+	)
+	if err := c.Connect(ln.Addr().String()); err != nil {
+		t.Fatalf("connect: %v", err)
+	}
+	defer c.Close()
+
+	resp, err := c.Register()
+	if err == nil {
+		t.Fatal("expected error when master rejects register, got nil")
+	}
+	if resp == nil || resp.GetSuccess() {
+		t.Fatalf("expected the rejected response to be returned alongside the error, got %v", resp)
+	}
+
+	select {
+	case req := <-received:
+		if req.GetToken() != "bad-token" {
+			t.Fatalf("expected rejected token to be sent, got %q", req.GetToken())
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("master did not receive register request")
+	}
+}
+
 // TestRegisterCarriesToken token 应随注册请求发送（L1 认证契约）
 func TestRegisterCarriesToken(t *testing.T) {
 	ln, err := net.Listen("tcp", "127.0.0.1:0")

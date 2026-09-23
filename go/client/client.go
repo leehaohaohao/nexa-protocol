@@ -148,6 +148,10 @@ func (c *Client) RegisterContext(ctx context.Context) (*messages.RegisterRespons
 	if err := codec.UnmarshalMessage(respEnv.GetPayload(), resp); err != nil {
 		return nil, fmt.Errorf("unmarshal register response: %w", err)
 	}
+	// 主节点拒绝注册（success=false，如 token 错误或节点未登记）时返回错误而非继续运行
+	if !resp.GetSuccess() {
+		return resp, fmt.Errorf("register rejected by master: %s", resp.GetMessage())
+	}
 	return resp, nil
 }
 
