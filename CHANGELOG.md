@@ -12,6 +12,24 @@
 
 ## Go
 
+### v0.6.2 (2026-09-23)
+
+#### 修复
+
+- **统一断开事件所有权，消除漏通知竞态**：超时监控、主动断开、连接退出三条路径统一为
+  「**谁成功条件移除当前会话，谁负责通知恰好一次**」
+  - `NexaMaster.cleanupConnection`（连接退出清理，从 `handleConn` 的 defer 中抽出并可直接测试）：
+    不再凭会话的 `timedOut` 标记推断「心跳监控器已经通知」而跳过。此前若监控器先 `MarkTimedOut`、
+    连接退出路径抢先完成条件移除，双方都会跳过通知，导致会话已离线却收不到掉线事件
+  - 成功移除者按会话状态上报原因：已标记超时 → `heartbeat_timeout`，否则 → `connection_lost`
+  - `HeartbeatMonitor`：CAS 标记超时仅用于标记状态与上报原因，**不作为「已通知」的依据**
+
+#### 测试
+
+- 新增确定性交错测试 `TestTimeoutAndConnectionCloseInterleavingNotifiesOnce`：用真实
+  `cleanupConnection` 固定「标记超时 → 连接退出移除 → 监控器移除失败」顺序，断言恰好一次通知、
+  原因为 `heartbeat_timeout`、事件携带会话身份、会话只被移除一次
+
 ### v0.6.1 (2026-09-23)
 
 #### 修复
@@ -120,6 +138,25 @@
 ---
 
 ## Java
+
+### v0.6.2 (2026-09-23)
+
+#### 修复
+
+- **统一断开事件所有权，消除漏通知竞态**（复核发现的剩余竞态 D.1）：超时监控、主动断开、
+  连接退出三条路径统一为「**谁成功条件移除当前会话，谁负责通知恰好一次**」
+  - `MasterChannelHandler.channelInactive`：不再凭 `session.isTimedOut()` 推断
+    「心跳监控器已经通知」而跳过。此前 `HeartbeatMonitor.doCheck()` 先 `markTimedOut()` 再
+    `removeIfPresent()`，若 `channelInactive` 恰在两者之间抢先移除，它会因超时标记为真而跳过回调、
+    监控器随后因移除失败也不回调 → 会话已离线但掉线事件**漏发**
+  - 成功移除者按会话状态上报原因：已标记超时 → `heartbeat_timeout`，否则 → `connection_lost`
+  - `HeartbeatMonitor`：CAS 标记超时仅用于标记状态与上报原因，**不作为「已通知」的依据**
+
+#### 测试
+
+- 新增可控同步点的确定性交错测试 `timeoutAndChannelInactiveInterleavingNotifiesExactlyOnce`：
+  用真实 `MasterChannelHandler.channelInactive` 固定「标记超时 → 连接退出移除 → 监控器移除失败」
+  顺序，断言恰好一次通知、原因为 `heartbeat_timeout`、事件携带会话身份、会话只被移除一次
 
 ### v0.6.1 (2026-09-23)
 
