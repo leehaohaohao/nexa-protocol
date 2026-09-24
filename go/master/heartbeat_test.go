@@ -220,6 +220,64 @@ func TestExpiredSessionSupersededDuringScanIsNotNotified(t *testing.T) {
 	}
 }
 
+// interleavingSource 在监控器执行条件移除之前，插入「连接退出路径抢先移除」的可控同步点：
+// 用真实 NexaMaster.cleanupConnection 复现「标记超时 → 连接退出移除 → 监控器移除失败」的时序。
+type interleavingSource struct {
+	master  *NexaMaster
+	session *RunnerSession
+	connCtx *ConnContext
+	fired   bool
+}
+
+func (s *interleavingSource) AllSessions() []*RunnerSession {
+	return []*RunnerSession{s.session}
+}
+
+func (s *interleavingSource) RemoveIfPresent(runnerId string, expected *RunnerSession) bool {
+	if !s.fired {
+		s.fired = true
+		s.master.cleanupConnection(s.connCtx) // 连接退出路径抢先移除并通知
+	}
+	return s.master.sessions.RemoveIfPresent(runnerId, expected)
+}
+
+// D.1 漏通知竞态：监控器标记超时后，连接退出路径抢先完成条件移除。
+// 事件所有权规则下必须恰好通知一次；若连接退出路径凭 timedOut 标记推断监控器已通知而跳过，
+// 双方都不通知 → 掉线事件漏发。
+func TestTimeoutAndConnectionCloseInterleavingNotifiesOnce(t *testing.T) {
+	sessions := NewSessionManager()
+	listener := newRecordingListener(goodToken)
+	master := &NexaMaster{sessions: sessions, listener: listener, logger: testLogger()}
+
+	conn := newMockConn()
+	session := NewRunnerSession("R", conn, "host", "127.0.0.1", "test")
+	ageHeartbeat(session, time.Hour) // 会话已过期
+	sessions.Register(session)
+
+	connCtx := &ConnContext{Session: session}
+	source := &interleavingSource{master: master, session: session, connCtx: connCtx}
+
+	// 真实监控器：doCheck 先 MarkTimedOut，再调用 source.RemoveIfPresent 触发交错
+	NewHeartbeatMonitor(source, listener, time.Second, 5*time.Second, testLogger()).doCheck()
+
+	events := listener.disconnectsFor("R")
+	if len(events) != 1 {
+		t.Fatalf("timeout/close interleaving must produce exactly one event, got %+v", events)
+	}
+	if events[0].reason != "heartbeat_timeout" {
+		t.Fatalf("winning remover should report heartbeat_timeout, got %q", events[0].reason)
+	}
+	if events[0].session != session {
+		t.Fatalf("event must carry the removed session identity")
+	}
+	if _, ok := sessions.Get("R"); ok {
+		t.Fatalf("session should be removed exactly once")
+	}
+	if !session.timedOut.Load() {
+		t.Fatalf("session should stay marked as timed out")
+	}
+}
+
 // 旧 API 兼容：未实现 SessionDisconnectListener 的 listener 仍可收到断开事件
 func TestLegacyListenerReceivesDisconnect(t *testing.T) {
 	sessions := NewSessionManager()

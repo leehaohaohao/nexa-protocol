@@ -45,10 +45,13 @@ public class MasterChannelHandler extends SimpleChannelInboundHandler<byte[]> {
     }
 
     /**
-     * 连接断开清理：与心跳超时、主动断开共用「仅条件移除成功才通知」规则。
+     * 连接断开清理。
      *
-     * <p>已被同 ID 新连接接管的旧连接解析不到会话，因此不会误删新会话或误报离线；
-     * 心跳超时路径已由 {@code HeartbeatMonitor} 条件移除并发过一次通知，此处不再重复。
+     * <p><b>事件所有权规则</b>：超时监控、主动断开、连接退出三条路径共用
+     * 「谁成功移除当前会话，谁负责通知恰好一次」。因此这里不再凭 {@code isTimedOut()}
+     * 推断「心跳监控器已经通知」——若监控器先标记超时、本路径抢先完成移除，
+     * 双方都跳过通知会使掉线事件漏发。仅当条件移除失败（已被其他路径移除，
+     * 或已被同 ID 新连接接管）时本路径才不通知。
      */
     @Override
     public void channelInactive(ChannelHandlerContext ctx) {
@@ -60,16 +63,14 @@ public class MasterChannelHandler extends SimpleChannelInboundHandler<byte[]> {
         RunnerSession session = resolved.get();
 
         if (!sessionManager.removeIfPresent(session.getRunnerId(), session)) {
+            // 已被超时监控 / 主动断开移除，或已被新连接接管：不由本路径通知
             return;
         }
 
-        if (session.isTimedOut()) {
-            // 超时事件已由 HeartbeatMonitor 发出
-            return;
-        }
-
+        // 成功移除者通知一次；会话已被标记超时时按超时原因上报
+        String reason = session.isTimedOut() ? "heartbeat_timeout" : "connection_lost";
         try {
-            listener.onDisconnect(session, "connection_lost");
+            listener.onDisconnect(session, reason);
         } catch (Exception e) {
             log.error("listener.onDisconnect error for {}", session.getRunnerId(), e);
         }

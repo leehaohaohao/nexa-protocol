@@ -149,17 +149,7 @@ func (m *NexaMaster) handleConn(conn net.Conn) {
 		Session: NewRunnerSession("", conn, "", "", ""),
 	}
 
-	defer func() {
-		if connCtx.Session != nil && connCtx.Session.RunnerId != "" {
-			// 仅当该会话仍未被新连接接管时才判定离线：
-			// 已被接管说明这是旧连接的退出，不得误删新会话或把节点标记为离线
-			if m.sessions.RemoveIfPresent(connCtx.Session.RunnerId, connCtx.Session) {
-				if !connCtx.Session.timedOut.Load() {
-					notifyDisconnect(m.listener, connCtx.Session, "connection_lost")
-				}
-			}
-		}
-	}()
+	defer m.cleanupConnection(connCtx)
 
 	for {
 		data, err := codec.ReadFrame(conn)
@@ -175,6 +165,31 @@ func (m *NexaMaster) handleConn(conn net.Conn) {
 
 		m.dispatcher.Dispatch(connCtx, env)
 	}
+}
+
+// cleanupConnection 连接退出清理。
+//
+// 事件所有权规则：超时监控、主动断开、连接退出三条路径共用
+// 「谁成功条件移除当前会话，谁负责通知恰好一次」。因此这里不再凭 timedOut 标记推断
+// 「心跳监控器已经通知」——若监控器先标记超时、本路径抢先完成移除，双方都跳过通知
+// 会使掉线事件漏发。
+//
+// 仅当条件移除失败（已被其他路径移除，或已被同 ID 新连接接管）时本路径才不通知。
+func (m *NexaMaster) cleanupConnection(connCtx *ConnContext) {
+	if connCtx == nil || connCtx.Session == nil || connCtx.Session.RunnerId == "" {
+		return
+	}
+
+	if !m.sessions.RemoveIfPresent(connCtx.Session.RunnerId, connCtx.Session) {
+		return
+	}
+
+	// 成功移除者通知一次；会话已被标记超时时按超时原因上报
+	reason := "connection_lost"
+	if connCtx.Session.timedOut.Load() {
+		reason = "heartbeat_timeout"
+	}
+	notifyDisconnect(m.listener, connCtx.Session, reason)
 }
 
 // Shutdown 优雅关闭主节点

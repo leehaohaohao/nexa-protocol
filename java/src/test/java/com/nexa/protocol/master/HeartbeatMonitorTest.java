@@ -120,6 +120,49 @@ class HeartbeatMonitorTest {
         assertTrue(session.isTimedOut());
     }
 
+    /**
+     * D.1 漏通知竞态（可控同步点）：监控器标记超时后，连接退出路径抢先完成条件移除。
+     *
+     * <p>时序：{@code markTimedOut} → {@code channelInactive} 条件移除成功 → 监控器条件移除失败。
+     * 按「谁成功移除谁通知」的事件所有权规则，必须恰好通知一次且原因为 {@code heartbeat_timeout}。
+     * 若连接退出路径凭 {@code isTimedOut()} 推断监控器已通知而跳过，双方都不通知 → 掉线事件漏发。
+     */
+    @Test
+    void timeoutAndChannelInactiveInterleavingNotifiesExactlyOnce() {
+        InterleavingSessionManager manager = new InterleavingSessionManager();
+        RecordingMasterListener events = new RecordingMasterListener(TOKEN);
+
+        EmbeddedChannel channel = newRegisteredChannel(manager, events, "R");
+        RunnerSession session = manager.get("R").orElseThrow();
+
+        try {
+            ageHeartbeat(session, 60_000); // 会话已过期
+        } catch (Exception e) {
+            throw new IllegalStateException(e);
+        }
+
+        // 可控同步点：监控器调用条件移除之前，让连接退出路径抢先移除会话
+        manager.arm(() -> {
+            channel.close();
+            channel.runPendingTasks();
+        });
+
+        HeartbeatMonitor monitor = new HeartbeatMonitor(
+                manager, events, Duration.ofSeconds(1), Duration.ofSeconds(5));
+        monitor.checkTimeouts();
+        channel.runPendingTasks();
+
+        List<RecordingMasterListener.DisconnectEvent> disconnectEvents = events.disconnectEvents();
+        assertEquals(1, disconnectEvents.size(),
+                "timeout/close interleaving must produce exactly one disconnect event, got " + disconnectEvents);
+        assertEquals("heartbeat_timeout", disconnectEvents.get(0).reason(),
+                "the winning remover should report the timeout reason");
+        assertSame(session, disconnectEvents.get(0).session(),
+                "the event must carry the removed session identity");
+        assertTrue(manager.get("R").isEmpty(), "session should be removed exactly once");
+        assertTrue(session.isTimedOut());
+    }
+
     /** 正常连接断开（未超时）仍应通知一次 connection_lost */
     @Test
     void normalChannelCloseNotifiesConnectionLostOnce() {
@@ -251,17 +294,44 @@ class HeartbeatMonitorTest {
 
     /** 带注册链路的连接，注册成功并消费响应，使 channelInactive 语义生效 */
     private EmbeddedChannel newRegisteredChannel(String runnerId) {
+        return newRegisteredChannel(sessionManager, listener, runnerId);
+    }
+
+    private EmbeddedChannel newRegisteredChannel(SessionManager manager, NexaMasterListener eventListener,
+                                                 String runnerId) {
         MessageDispatcher dispatcher = new MessageDispatcher(
-                List.<MessageHandler>of(new RegisterHandler(sessionManager, listener)));
-        MasterChannelHandler masterHandler = new MasterChannelHandler(sessionManager, listener, dispatcher);
+                List.<MessageHandler>of(new RegisterHandler(manager, eventListener)));
+        MasterChannelHandler masterHandler = new MasterChannelHandler(manager, eventListener, dispatcher);
         EmbeddedChannel channel = new EmbeddedChannel(masterHandler);
 
         channel.writeInbound(EnvelopeFixtures.register(runnerId, TOKEN).toByteArray());
         channel.runPendingTasks();
         channel.readOutbound();
 
-        assertTrue(sessionManager.get(runnerId).isPresent(), "session should be registered: " + runnerId);
+        assertTrue(manager.get(runnerId).isPresent(), "session should be registered: " + runnerId);
         return channel;
+    }
+
+    /**
+     * 在监控器执行条件移除之前，插入「连接退出路径抢先移除」的可控同步点。
+     */
+    private static class InterleavingSessionManager extends SessionManager {
+
+        private Runnable interleave;
+        private boolean fired;
+
+        void arm(Runnable interleave) {
+            this.interleave = interleave;
+        }
+
+        @Override
+        public boolean removeIfPresent(String runnerId, RunnerSession expected) {
+            if (!fired && interleave != null) {
+                fired = true;
+                interleave.run();
+            }
+            return super.removeIfPresent(runnerId, expected);
+        }
     }
 
     private static void await(CountDownLatch latch) {

@@ -62,12 +62,15 @@ func (m *HeartbeatMonitor) doCheck() {
 			continue
 		}
 
+		// CAS 标记超时：仅用于标记会话状态与上报原因，不作为「已通知」的依据
 		if !session.MarkTimedOut() {
 			continue
 		}
 
-		// 先条件移除：仅当注册表中当前绑定的仍是这个过期会话时，本次才拥有通知权。
-		// 若已被同 ID 新连接接管，则不通知（新节点保持在线），只清理过期旧连接。
+		// 事件所有权：谁成功条件移除当前会话，谁负责通知恰好一次。
+		// - 移除成功 → 本路径通知（连接退出路径随后移除失败，不会重复通知）
+		// - 移除失败 → 会话已被连接退出/主动断开移除，或已被新会话接管，本路径不通知
+		// 若已被同 ID 新连接接管，则只清理过期旧连接，新节点保持在线且不被通知。
 		removedCurrent := m.sessions.RemoveIfPresent(session.RunnerId, session)
 
 		m.logger.Warn("runner heartbeat timeout, closing",
